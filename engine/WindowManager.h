@@ -1,6 +1,8 @@
 #pragma once
 
 #include <unordered_map>
+#include <memory>
+#include <string>
 
 #include "MathUtil.h"
 #include <SFML/Graphics.hpp>
@@ -34,6 +36,8 @@ public:
 
 private:
     std::shared_ptr<sf::RenderWindow> mWindow;
+    Point2D mWorldCenter;
+    float mWorldScale = 1.0f;
 };
 
 }  // namespace ECSEngine
