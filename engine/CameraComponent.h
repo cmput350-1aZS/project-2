@@ -22,13 +22,13 @@ struct CameraComponent {
     float speed;
 };
 
-struct CameraFollower {
-    EntityID entityID;  // The entity that this camera follows
-};
+// struct CameraFollower {
+//     EntityID entityID;  // The entity that this camera follows
+// };
 
-struct CameraShake {
-    int frameLimit;
-    Point2D offset;
-};
+// struct CameraShake {
+//     int frameLimit;
+//     Point2D offset;
+// };
 
 }  // namespace ECSEngine

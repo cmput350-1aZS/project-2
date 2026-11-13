@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
+
 namespace ECSEngine {
 
 template <typename T>
