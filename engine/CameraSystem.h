@@ -47,24 +47,24 @@ public:
                 continue;
             }
 
-            if (entities.HasComponent<CameraComponent>(id)) {
-                camera = &entities.GetComponent<CameraComponent>(id);
+            if (entities.template HasComponent<CameraComponent>(id)) {
+                camera = &entities.template GetComponent<CameraComponent>(id);
 
-                if (entities.HasComponent<CameraShake>(id)) {
-                    shake = &entities.GetComponent<CameraShake>(id);
+                if (entities.template HasComponent<CameraShake>(id)) {
+                    shake = &entities.template GetComponent<CameraShake>(id);
                 }
             }
 
-            if (entities.HasComponent<CameraFollower>(id)) {
+            if (entities.template HasComponent<CameraFollower>(id)) {
                 targetID =
-                    entities.GetComponent<CameraFollower>(id).entityID;
+                    entities.template GetComponent<CameraFollower>(id).entityID;
                 foundFollower = true;
             }
         }
 
         if (camera == nullptr || !foundFollower ||
             !entities.IsValid(targetID) ||
-            !entities.HasComponent<LocationComponent>(targetID)) {
+            !entities.template HasComponent<LocationComponent>(targetID)) {
             return kContinue;
         }
 
@@ -88,7 +88,7 @@ public:
         windowManager.SetWorldScale(camera->worldUnitsPerPixel);
 
         const Point2D targetPosition =
-            entities.GetComponent<LocationComponent>(targetID).loc;
+            entities.template GetComponent<LocationComponent>(targetID).loc;
 
         const float screenX =
             windowManager.WorldToWindow(targetPosition.x);

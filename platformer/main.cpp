@@ -3,6 +3,11 @@
 #include <string>
 #include <unordered_map>
 
+// These structs must be declared before the system headers below, which name them directly
+#include "GravityComponent.h"
+#include "MovementComponent.h"
+#include "RespawnComponent.h"
+
 #include "CameraSystem.h"
 #include "CollisionComponent.h"
 #include "CollisionLateSystem.h"

@@ -32,12 +32,12 @@ public:
             EntityID id = entity.GetID();
 
             if (!entities.IsValid(id) ||
-                !entities.HasComponent<ScoreComponent>(id)) {
+                !entities.template HasComponent<ScoreComponent>(id)) {
                 continue;
             }
 
             auto& scoreComponent =
-                entities.GetComponent<ScoreComponent>(id);
+                entities.template GetComponent<ScoreComponent>(id);
 
             const int score = std::clamp(scoreComponent.score, 0, 999);
 
@@ -52,12 +52,12 @@ public:
 
                 if (digitEntity >= entityCount ||
                     !entities.IsValid(digitEntity) ||
-                    !entities.HasComponent<SpriteComponent>(digitEntity)) {
+                    !entities.template HasComponent<SpriteComponent>(digitEntity)) {
                     continue;
                 }
 
                 auto& spriteComponent =
-                    entities.GetComponent<SpriteComponent>(digitEntity);
+                    entities.template GetComponent<SpriteComponent>(digitEntity);
 
                 spriteComponent.textureID =
                     scoreComponent.digitTextureID[digits[i]];

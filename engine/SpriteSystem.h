@@ -44,18 +44,18 @@ public:
             EntityID id = entity.GetID();
 
             if (!entities.IsValid(id) ||
-                !entities.HasComponent<SpriteComponent>(id)) {
+                !entities.template HasComponent<SpriteComponent>(id)) {
                 continue;
             }
 
             const auto& spriteComponent =
-                entities.GetComponent<SpriteComponent>(id);
+                entities.template GetComponent<SpriteComponent>(id);
 
             Point2D basePosition(0.0f, 0.0f);
 
-            if (entities.HasComponent<LocationComponent>(id)) {
+            if (entities.template HasComponent<LocationComponent>(id)) {
                 basePosition =
-                    entities.GetComponent<LocationComponent>(id).loc;
+                    entities.template GetComponent<LocationComponent>(id).loc;
             }
 
             Point2D drawPosition(

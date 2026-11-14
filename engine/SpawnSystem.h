@@ -46,7 +46,7 @@ public:
             const EntityID id = entity.GetID();
 
             if (entities.IsValid(id) &&
-                entities.HasComponent<SpawnComponent>(id)) {
+                entities.template HasComponent<SpawnComponent>(id)) {
                 spawnerIDs.push_back(id);
             }
         }
@@ -56,7 +56,7 @@ public:
                 continue;
             }
 
-            auto& spawn = entities.GetComponent<SpawnComponent>(id);
+            auto& spawn = entities.template GetComponent<SpawnComponent>(id);
 
             // No more entities should be spawned by this spawner.
             if (spawn.totalSpawns <= 0) {
@@ -76,12 +76,12 @@ public:
             const EntityID ownerID = spawn.entityID;
 
             if (!entities.IsValid(ownerID) ||
-                !entities.HasComponent<LocationComponent>(ownerID)) {
+                !entities.template HasComponent<LocationComponent>(ownerID)) {
                 continue;
             }
 
             const Point2D spawnLocation =
-                entities.GetComponent<LocationComponent>(ownerID).loc;
+                entities.template GetComponent<LocationComponent>(ownerID).loc;
 
             // Create the new entity.
             const EntityID newEntity =
@@ -90,14 +90,14 @@ public:
             // Add its location.
             LocationComponent location{};
             location.loc = spawnLocation;
-            entities.AddComponent<LocationComponent>(newEntity, location);
+            entities.template AddComponent<LocationComponent>(newEntity, location);
 
             // Add its sprite.
             SpriteComponent sprite{};
             sprite.textureID = spawn.spawnTextureID;
             sprite.bounds = {{0.0f, 0.0f}, 32.0f, 32.0f};
             sprite.worldSpace = true;
-            entities.AddComponent<SpriteComponent>(newEntity, sprite);
+            entities.template AddComponent<SpriteComponent>(newEntity, sprite);
 
             // Give it a random direction and speed.
             const float angle = angleDistribution(generator);
@@ -109,7 +109,7 @@ public:
                 std::sin(angle) * speed
             };
 
-            entities.AddComponent<MovementComponent>(
+            entities.template AddComponent<MovementComponent>(
                 newEntity, movement
             );
 
@@ -126,7 +126,7 @@ public:
             };
             collision.previousCollisionBox = collision.collisionBox;
 
-            entities.AddComponent<CollisionComponent>(
+            entities.template AddComponent<CollisionComponent>(
                 newEntity, collision
             );
 
