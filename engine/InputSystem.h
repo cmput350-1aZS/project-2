@@ -43,7 +43,7 @@ public:
      *  - While Z is not held, upward speed is capped: velocity.y cannot go below
      *    -kJumpCutVelocity, so releasing Z early cuts the jump short.
      *  - C, on the frame it is first pressed and at least kDashInterval frames after the last
-     *    dash, sets velocity.x to -kDashVelocity if Left is held, otherwise kDashVelocity, and
+     *    dash, sets velocity.x to kDashVelocity in the direction last faced (facing), and
      *    resets lastDash to 0. lastDash counts frames and is incremented once per frame.
      *
      * "First pressed" means down in keydown and not down in lastKeydown. At the end of the frame
@@ -85,11 +85,13 @@ public:
                         // Holding Right speeds up to the right
                         if (inputComponent.keydown[Key::Right]) {
                             movementComponent.velocity.x += acceleration;
+                            inputComponent.facing = 1;  // Remembered for the dash
                         }
 
                         // Holding Left speeds up to the left (negative x)
                         if (inputComponent.keydown[Key::Left]) {
                             movementComponent.velocity.x -= acceleration;
+                            inputComponent.facing = -1;
                         }
 
                         // No arrow held: slow down toward 0 without passing it, so the player
@@ -152,13 +154,10 @@ public:
                     if (inputComponent.keydown[Key::C] &&
                         inputComponent.lastDash >= kDashInterval &&
                         !inputComponent.lastKeydown[Key::C]) {
-                        // Dash left if Left is held, otherwise right. Using else means only one
-                        // of the two lines runs, so the right dash cannot overwrite the left
-                        if (inputComponent.keydown[Key::Left]) {
-                            movementComponent.velocity.x = -kDashVelocity;
-                        } else {
-                            movementComponent.velocity.x = kDashVelocity;
-                        }
+                        // Dash the way the player last faced. facing is 1 (right) or -1 (left),
+                        // so this gives +kDashVelocity or -kDashVelocity, even if no arrow is
+                        // held at the moment C is pressed
+                        movementComponent.velocity.x = kDashVelocity * inputComponent.facing;
                         // Start the cooldown again
                         inputComponent.lastDash = 0;
                     }

@@ -14,6 +14,7 @@ struct InputComponent {
     InputComponent(EntityID whichEntity) : entity(whichEntity), lastDash(0) {}
     EntityID entity;
     int lastDash;
+    int facing = 1;  // Last direction an arrow was held: 1 = right, -1 = left. Used for the dash
     std::bitset<sf::Keyboard::ScancodeCount> keydown;
     std::bitset<sf::Keyboard::ScancodeCount> lastKeydown;
 };
