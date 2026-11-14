@@ -164,7 +164,7 @@ public:
                                                 if (hitSpeed >= kShakeMinSpeed &&
                                                     em.template HasComponent<CameraShake>(id)) {
                                                     auto& shake =
-                                                        em.template GetComponent <CameraShake>(id);
+                                                        em.template GetComponent<CameraShake>(id);
                                                     shake.frameLimit = kShakeFrames;
                                                     shake.offset =
                                                         Point2D(0.0f, hitSpeed * kShakeScale);
@@ -277,6 +277,12 @@ public:
                                             }
                                         }
                                     }
+                                    currentBox.topLeft.x =
+                                        collisionComponent.collisionBox.topLeft.x +
+                                        locationComponent.loc.x;
+                                    currentBox.topLeft.y =
+                                        collisionComponent.collisionBox.topLeft.y +
+                                        locationComponent.loc.y;
                                 }
                             }
                         }

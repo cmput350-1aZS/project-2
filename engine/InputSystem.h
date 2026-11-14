@@ -7,17 +7,17 @@ namespace ECSEngine {
 // Speeds are in pixels per second, because MovementSystem multiplies velocity
 // by the frame time in seconds. Accelerations and counts are per frame; the engine runs at
 // 60 frames per second (setFramerateLimit in ECSEngine::Run).
-const float kMaxRunVelocity = 350;        // Fastest left or right run speed (about 5.5 tiles/s)
-const float kDashVelocity = 1100;         // Sideways speed during a dash
-const float kJumpVelocity = 600;          // Upward speed set by a jump (about 180 px high)
-const float kGroundRunAcceleration = 30;  // Speed gained per frame by a held arrow key on the ground
-const float kAirRunAcceleration = 20;     // Same, in the air
-const float kDashInterval = 60;           // Frames that must pass between two dashes (1 second)
-const float kJumpCutVelocity = 150.0f;    // Fastest upward speed allowed once Z is released
-const float kWallJumpVelocity = 650.0f;   // Upward speed set by a wall jump
-const float kWallJumpPush = 350.0f;       // Sideways speed away from the wall set by a wall jump
-const int kDashDuration = 15;             // Frames a dash lasts; gravity is off during it
-
+const float kMaxRunVelocity = 350;  // Fastest left or right run speed (about 5.5 tiles/s)
+const float kDashVelocity = 1100;   // Sideways speed during a dash
+const float kJumpVelocity = 600;    // Upward speed set by a jump (about 180 px high)
+const float kGroundRunAcceleration =
+    30;                                  // Speed gained per frame by a held arrow key on the ground
+const float kAirRunAcceleration = 20;    // Same, in the air
+const float kDashInterval = 60;          // Frames that must pass between two dashes (1 second)
+const float kJumpCutVelocity = 150.0f;   // Fastest upward speed allowed once Z is released
+const float kWallJumpVelocity = 650.0f;  // Upward speed set by a wall jump
+const float kWallJumpPush = 350.0f;      // Sideways speed away from the wall set by a wall jump
+const int kDashDuration = 15;            // Frames a dash lasts; gravity is off during it
 
 template <typename... Components>
 class InputSystem : public System<Components...> {
@@ -68,6 +68,9 @@ public:
 
                     bool dashing = inputComponent.lastDash < kDashDuration;
 
+                    if (dashing) {
+                        movementComponent.velocity.y = 0;
+                    }
 
                     if (!dashing) {
                         // The player speeds up more slowly in the air than on the ground
