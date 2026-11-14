@@ -4,17 +4,20 @@
 
 namespace ECSEngine {
 
-// Tuning values. They are applied once per frame and have not been tuned yet
-const float kMaxRunVelocity = 15;        // Fastest left or right run speed
-const float kDashVelocity = 50;          // Speed set by a dash
-const float kJumpVelocity = 25;          // Upward speed set by a jump
-const float kGroundRunAcceleration = 5;  // Speed gained per frame by a held arrow key on the ground
-const float kAirRunAcceleration = 4;     // Same, in the air
-const float kDashInterval = 25;          // Frames that must pass between two dashes
-const float kJumpCutVelocity = 0.0f;     // Fastest upward speed allowed once Z is released
-const float kWallJumpVelocity = 25.0f;   // Upward speed set by a wall jump
-const float kWallJumpPush = 12.0f;       // Sideways speed away from the wall set by a wall jump
-const float kDashDuration = 10;
+// Speeds are in pixels per second, because MovementSystem multiplies velocity
+// by the frame time in seconds. Accelerations and counts are per frame; the engine runs at
+// 60 frames per second (setFramerateLimit in ECSEngine::Run).
+const float kMaxRunVelocity = 350;        // Fastest left or right run speed (about 5.5 tiles/s)
+const float kDashVelocity = 1100;         // Sideways speed during a dash
+const float kJumpVelocity = 600;          // Upward speed set by a jump (about 180 px high)
+const float kGroundRunAcceleration = 30;  // Speed gained per frame by a held arrow key on the ground
+const float kAirRunAcceleration = 20;     // Same, in the air
+const float kDashInterval = 60;           // Frames that must pass between two dashes (1 second)
+const float kJumpCutVelocity = 150.0f;    // Fastest upward speed allowed once Z is released
+const float kWallJumpVelocity = 650.0f;   // Upward speed set by a wall jump
+const float kWallJumpPush = 350.0f;       // Sideways speed away from the wall set by a wall jump
+const int kDashDuration = 15;             // Frames a dash lasts; gravity is off during it
+
 
 template <typename... Components>
 class InputSystem : public System<Components...> {
@@ -63,31 +66,45 @@ public:
                     auto& movementComponent = em.template GetComponent<MovementComponent>(id);
                     auto& collisionComponent = em.template GetComponent<CollisionComponent>(id);
 
-                    // The player speeds up more slowly in the air than on the ground
-                    float acceleration;
-                    if (collisionComponent.onGround) {
-                        acceleration = kGroundRunAcceleration;
-                    } else {
-                        acceleration = kAirRunAcceleration;
-                    }
+                    bool dashing = inputComponent.lastDash < kDashDuration;
 
-                    // Holding Right speeds up to the right
-                    if (inputComponent.keydown[Key::Right]) {
-                        movementComponent.velocity.x += acceleration;
-                    }
 
-                    // Holding Left speeds up to the left (negative x)
-                    if (inputComponent.keydown[Key::Left]) {
-                        movementComponent.velocity.x -= acceleration;
-                    }
+                    if (!dashing) {
+                        // The player speeds up more slowly in the air than on the ground
+                        float acceleration;
 
-                    // Two clamps, one per direction, so holding a key cannot speed up forever
-                    if (movementComponent.velocity.x > kMaxRunVelocity) {
-                        movementComponent.velocity.x = kMaxRunVelocity;
-                    }
+                        if (collisionComponent.onGround) {
+                            acceleration = kGroundRunAcceleration;
+                        } else {
+                            acceleration = kAirRunAcceleration;
+                        }
 
-                    if (movementComponent.velocity.x < -kMaxRunVelocity) {
-                        movementComponent.velocity.x = -kMaxRunVelocity;
+                        // Holding Right speeds up to the right
+                        if (inputComponent.keydown[Key::Right]) {
+                            movementComponent.velocity.x += acceleration;
+                        }
+
+                        // Holding Left speeds up to the left (negative x)
+                        if (inputComponent.keydown[Key::Left]) {
+                            movementComponent.velocity.x -= acceleration;
+                        }
+
+                        // No arrow held: slow down toward 0 without passing it, so the player
+                        // stops instead of sliding forever
+                        if (!inputComponent.keydown[Key::Right] &&
+                            !inputComponent.keydown[Key::Left]) {
+                            movementComponent.velocity.x = 0;
+                        }
+
+                        // Two clamps, one per direction, so holding a key cannot speed up
+                        // forever
+                        if (movementComponent.velocity.x > kMaxRunVelocity) {
+                            movementComponent.velocity.x = kMaxRunVelocity;
+                        }
+
+                        if (movementComponent.velocity.x < -kMaxRunVelocity) {
+                            movementComponent.velocity.x = -kMaxRunVelocity;
+                        }
                     }
 
                     // Jump only on the frame Z is first pressed, and only from the ground.
@@ -95,6 +112,7 @@ public:
                     if (inputComponent.keydown[Key::Z] && !inputComponent.lastKeydown[Key::Z] &&
                         collisionComponent.onGround) {
                         movementComponent.velocity.y = -kJumpVelocity;
+                        engine->GetSoundManager().GetSound("jump").play();
                     }
 
                     // Wall jump off a wall on the left. Needs a fresh Z press, in the air,
@@ -108,7 +126,7 @@ public:
                     }
 
                     // The same wall jump off a wall on the right. Only x flips: the push goes
-                    // left. The jump is still up, so y keeps its minus sign
+                    // left.
                     if (inputComponent.keydown[Key::Z] && !inputComponent.lastKeydown[Key::Z] &&
                         !collisionComponent.onGround && movementComponent.velocity.y > 0 &&
                         collisionComponent.onRightWall && inputComponent.keydown[Key::Right]) {

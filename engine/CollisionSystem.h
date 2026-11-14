@@ -1,5 +1,7 @@
 #pragma once
 
+#include "InputComponent.h"
+#include "ScoreComponent.h"
 
 namespace ECSEngine {
 
@@ -77,6 +79,9 @@ public:
                         collisionComponent.collisionBox.height,
                     };
 
+  
+                    bool wasOnGround = collisionComponent.onGround;
+
                     // The contact flags describe this frame only, so clear them before testing
                     collisionComponent.onGround = 0;
                     collisionComponent.onCeiling = 0;
@@ -112,6 +117,22 @@ public:
                                 // entity came from. The tests run in this order; the first true
                                 // one is used
                                 if (Overlaps(currentBox, otherBox)) {
+                                    if (em.template HasComponent<InputComponent>(id) &&
+                                        !otherCollisionComponent.staticEntity) {
+                                        em.RemoveEntity(otherId);
+                                        for (auto& s : em) {
+                                            if (em.template HasComponent<ScoreComponent>(
+                                                    s.GetID())) {
+                                                auto& scoreComponent =
+                                                    em.template GetComponent<ScoreComponent>(
+                                                        s.GetID());
+                                                scoreComponent.score += 1;
+                                            }
+                                        }
+                                        engine->GetSoundManager().GetSound("star").play();
+                                        continue;
+                                    }
+
                                     if (collisionComponent.previousCollisionBox.topLeft.y +
                                             collisionComponent.previousCollisionBox.height <=
                                         otherBox.topLeft.y) {
@@ -179,6 +200,13 @@ public:
                                 }
                             }
                         }
+                    }
+
+                    // The player touches the ground this frame but did not last frame: it
+                    // just landed 
+                    if (em.template HasComponent<InputComponent>(id) &&
+                        collisionComponent.onGround && !wasOnGround) {
+                        engine->GetSoundManager().GetSound("land").play();
                     }
                 }
             }

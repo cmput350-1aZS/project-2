@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
 #include "CameraComponent.h"
@@ -121,12 +122,16 @@ ECSEngine<Components...>::~ECSEngine() {}
 
 template <typename... Components>
 void ECSEngine<Components...>::Run() {
+
+    // Set fps to 60
+    mWindowManager.GetWindow()->setFramerateLimit(60);
+
     // Restart once before the loop so the time spent loading is not counted in frame 1
     mClock.restart();
     while (ProcessEvents()) {
         // restart() returns the time since the last restart, which is the previous frame's
         // duration, and starts timing the next frame
-        mFrameTime = mClock.restart().asSeconds();
+        mFrameTime = std::min(mClock.restart().asSeconds(), 1.0f / 30.0f);
         // Run every system in order; one returning kExit stops the game
         auto keepRunning = mSystemManager.Run(this);
         if (!keepRunning) {

@@ -42,7 +42,7 @@ void WindowManager::DebugFrameRect(const Rect& r, int red, int green, int blue, 
     shape.setFillColor(sf::Color::Transparent);
     shape.setOutlineColor(sf::Color(static_cast<std::uint8_t>(std::clamp(red, 0, 255)),
                                     static_cast<std::uint8_t>(std::clamp(green, 0, 255)),
-                                    static_cast<std::uint8_t>(blue, 0, 255),
+                                    static_cast<std::uint8_t>(std::clamp(blue, 0, 255)),
                                     static_cast<std::uint8_t>(std::clamp(alpha, 0, 255))));
     shape.setOutlineThickness(1.0f);
 

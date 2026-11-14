@@ -7,7 +7,7 @@ namespace ECSEngine {
 // Tuning values. They have not been tuned yet
 const float kFallMultiplier = 2.0;      // Pull is multiplied by this while falling (velocity.y > 0)
 const float kFastFallMultiplier = 1.5;  // Extra multiplier while falling and Down is held
-const float kWallSlideSpeed = 5.0f;     // Fastest downward velocity.y allowed on a wall slide
+const float kWallSlideSpeed = 100.0f;   // Fastest downward velocity.y allowed on a wall slide
 
 template <typename... Components>
 class GravitySystem : public System<Components...> {
@@ -99,6 +99,15 @@ public:
                     // after the += above, which is what adds the speed
                     if (sliding && movementComponent.velocity.y > kWallSlideSpeed) {
                         movementComponent.velocity.y = kWallSlideSpeed;
+                    }
+
+                    // While sliding, play the "wall" sound, but only start it again once the
+                    // last play has finished, or it would restart every frame
+                    if (sliding) {
+                        auto& wallSound = engine->GetSoundManager().GetSound("wall");
+                        if (wallSound.getStatus() != sf::Sound::Status::Playing) {
+                            wallSound.play();
+                        }
                     }
                 }
             }
