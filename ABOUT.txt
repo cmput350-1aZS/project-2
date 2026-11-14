@@ -85,6 +85,48 @@ One entry per major part of the project: what exists, which files, and how it wo
   - The engine's component pack includes the components required by the platformer, including location, movement, collision, sprite, spawn, camera, camera follower, input, gravity, camera shake, score, and respawn components.
   - The platformer main file registers the systems used by the game, including input, gravity, movement, collision, score, camera, sprite, and spawn systems.
 
+[M9] Entity Manager
+  - Implemented in engine/EntityManager.h, with tests in engine/EngineTest.cpp.
+  - Entities live in a vector. An EntityID is its position. IDs are never reused: a removed entity stays as an invalid gap (mValid is false).
+  - mSlots is a table with one row per entity and one column per component type. A cell holds the position of that entity's component in the type's storage, or kNullComponent.
+  - Each component type has a ComponentStorage (values, valid flags and a free list). RemoveComponent puts the slot on the free list; AddComponent reuses a free slot before growing the vector.
+
+[M10] Engine main loop, events, frame time and debug drawing
+  - Implemented in engine/ECSEngine.h: ProcessEvents, Run, GetFrameTime and DebugDraw.
+  - ProcessEvents polls SFML events. A close event returns false. A key press or release sets or clears the key's bit in keydown of every InputComponent. The D key toggles debug drawing.
+  - Run limits the window to 60 frames per second, then loops while ProcessEvents returns true. Each frame it measures the frame time, runs the systems through SystemManager, draws the collision boxes if debug is on, and shows the frame once with display(). It stops if a system returns kExit.
+  - Frame time is in seconds (Lecture 15: velocity in pixels per second, applied "given frame timing"). EngineView has a pure virtual GetFrameTime(), and ECSEngine returns mFrameTime. The clock is restarted once before the loop so loading time is not counted in frame 1. A frame is capped at 1/30 s, so a slow frame cannot move an entity through the floor.
+  - DebugDraw outlines every collision box, red for static entities and green for moving ones, with WindowManager::DebugFrameRect.
+
+[M11] Collision Component, Collision Late System and Collision System
+  - CollisionComponent (engine/CollisionComponent.h): all six flags default to 0 and both Rects to {}, so a new component never holds leftover memory.
+  - CollisionLateSystem (engine/CollisionLateSystem.h) stores each entity's collision box at its world position in previousCollisionBox before the entity moves.
+  - CollisionSystem (engine/CollisionSystem.h): Overlaps(a, b) returns false when a is entirely left of, right of, above or below b. Boxes that only touch along an edge do not overlap.
+  - For every moving entity it clears the four contact flags, then checks it against every other entity (static ones too). On an overlap, previousCollisionBox decides which side was hit (top, bottom, left or right). The entity is pushed out on that side, the matching flag is set, and its velocity on that axis is set to 0.
+  - After each push the entity's box is rebuilt from the new location, so a second tile in the same frame (for example where two wall tiles meet) is tested against the new position, not the old one.
+  - Player hitting a star: the star is removed, the score goes up by 1 and the "star" sound plays.
+  - Star hitting a static obstacle: it bounces, keeping 70% of its speed (kBounceKeep).
+  - A hit faster than kShakeMinSpeed sets the player's CameraShake, along the hit's axis. Landing plays the "land" sound.
+  - Player touching a spike (a tile with doesDamage set; 'x' in world.map): the player goes back to its RespawnComponent location with zero velocity.
+
+[M12] Movement System and Gravity System
+  - MovementSystem (engine/MovementSystem.h) adds velocity * frame time to the location of every entity with a MovementComponent and a LocationComponent.
+  - GravitySystem (engine/GravitySystem.h) adds acceleration * frame time to the velocity. Falling is faster than rising (kFallMultiplier 2.0), and holding Down while falling is faster again (kFastFallMultiplier 1.5).
+  - Wall slide: falling while pressing into a wall caps the fall speed at kWallSlideSpeed and plays the "wall" sound.
+
+[M13] Input System
+  - Implemented in engine/InputSystem.h. It only changes velocity; MovementSystem moves the entity later in the frame.
+  - Running: Left and Right add an acceleration each frame (smaller in the air), clamped to kMaxRunVelocity. With no arrow held the player stops.
+  - Jump: a fresh Z press on the ground sets an upward velocity and plays the "jump" sound. A fresh press is "keydown now and not lastKeydown"; lastKeydown is copied from keydown at the end of each frame.
+  - Variable jump height: letting go of Z caps the upward speed at kJumpCutVelocity, so a short press gives a short jump.
+  - Wall jump: a fresh Z press while falling against a wall and holding into it pushes the player up and away from the wall.
+  - Dash: a fresh C press, at most once per second (kDashInterval frames), sets a fast sideways velocity for kDashDuration frames. During a dash the run code is skipped and vertical velocity is 0, so the dash goes straight sideways. The dash goes the way the player last faced (InputComponent::facing, set by the last arrow held), even if no arrow is held when C is pressed.
+
+[M14] Map loading and game setup
+  - LoadMap (platformer/main.cpp) reads the map format: the dictionary (one letter per tile, with a texture rectangle and, for type 2 maps, a collision box), the "map origin tile size" line, and the grid. Each letter except '.' becomes an entity with a location, a sprite and, for type 2 maps, a static collision box. 'S' becomes the star spawner instead.
+  - main() registers the four sounds ("jump", "land", "star", "wall"), loads sky.map then world.map (the sky is created first, so it is drawn first), and creates the player, the score digits, the camera and the extra star.
+  - The extra star is at (3296, 640), in the gap between the second spike wall and the end wall. It can only be reached by going over the wall, which needs a wall jump.
+
 
 3. DESIGN DECISIONS AND API CHANGES
 -----------------------------------
@@ -125,20 +167,44 @@ One entry per major part of the project: what exists, which files, and how it wo
   - EntityManager and the other managers are owned by the engine. Systems should access them through EngineView and should not retain references beyond the lifetime guaranteed by the manager.
   - References to sprites stored in SpriteManager should not be retained across later sprite registrations unless their validity is guaranteed by the implementation, since the sprites are stored in a vector.
 
+[M7] Entity storage
+  - Entity IDs are never reused, so an old EntityID can never silently point at a new entity; IsValid tells whether it still exists.
+  - References from GetComponent and GetComponentStorage stay valid until the next AddComponent of the same type, because the storage vector can grow. This is documented in EntityManager.h.
+
+[M8] Frame time (API change)
+  - Added a pure virtual GetFrameTime() to EngineView, returning float seconds, implemented by ECSEngine. Speeds are therefore in pixels per second and gravity in pixels per second squared, so movement does not depend on frame rate.
+  - Counts (dash cooldown, dash length, shake length) are in frames; the 60 fps limit in Run keeps them steady.
+
+[M9] One display() per frame (API change)
+  - display() was moved out of SpriteSystem into ECSEngine::Run, and SpriteSystem now calls clear() before drawing. The frame is shown once, after the debug boxes, so the boxes are drawn on top of the sprites.
+
+[M10] System order
+  - Order in main.cpp: CollisionLate, Input, Gravity, Movement, Collision, then the drawing and game systems.
+  - CollisionLateSystem must run before MovementSystem so previousCollisionBox holds the position before the move.
+  - InputSystem and GravitySystem read last frame's contact flags (onGround, onLeftWall, onRightWall), because CollisionSystem runs after them. One frame of delay is not noticeable.
+
+[M11] Collision side detection
+  - The side that was hit is decided from previousCollisionBox (where the entity was before it moved), not from the size of the overlap. An entity that was above the other box last frame has landed on it.
+  - Static entities are never moved, but they still block others because they are visited in the inner loop.
+  - A push is written as: location = target edge - box size (if needed) - collisionBox offset, because collisionBox is an offset from the location.
+
+[M12] Wall slide as a cap
+  - The wall slide caps the fall speed instead of using a smaller gravity, because a smaller gravity only slows the speed-up and a long slide would still get fast.
+
 
 4. IMPLEMENTATION NOTES AND REMAINING WORK
 ------------------------------------------
 
   - The platformer entry point is platformer/main.cpp.
-  - LoadMap is declared there, but its implementation and the map-loading setup still need to be completed.
-  - The main function contains setup sections for loading sounds and maps, placing the player, configuring the score component, and setting up the camera.
-  - The engine's main loop and event processing must be completed so that the registered systems run during gameplay.
-  - CollisionSystem and CollisionLateSystem still need their collision behavior implemented and integrated with the other systems.
-  - The collision implementation must support collecting stars, updating the score, bouncing spawned stars off static obstacles, and triggering camera shake.
-  - The game should be tested with the provided map layout, including the additional star outside the walls needed to test traversal.
-  - The final gameplay should be checked for wall jumping, dashing, variable jump height, wall sliding, faster falling, star collection, and score updates.
-
-These notes describe the implementation state while the project is being developed. They should be updated after the remaining systems and gameplay have been completed and tested.
+  - All the required systems are implemented and the game is playable: run, jump, variable jump height, wall slide, wall jump, dash, faster falling, star collection, score updates, bouncing stars, spikes that send the player back to the start, camera shake and the D debug toggle.
+  - The project builds with no errors and no warnings with -Wall -Wextra -Wpedantic on Windows.
+  - Known gaps:
+      * There is no sweep test, so a very fast entity could pass through a thin box in one frame. The 1/30 s frame cap keeps steps small enough for this level.
+      * disabledTimer is not used.
+      * An unknown letter in a map silently gets sprite 0, because unordered_map [] inserts a default for a missing key.
+      * The spawner values (first spawn after 60 frames, one every 120 frames, 1000 in total) are guesses. The tuning constants in InputSystem.h, GravitySystem.h and CollisionSystem.h were chosen by playtesting. The spec gives neither.
+      * The camera exclusion rectangles are our reading of the comments in CameraComponent.h; the spec does not give the numbers.
+  - world.map and sky.map are committed with git add -f, because *.map is in .gitignore.
 
 
 5. TEAM CONTRIBUTIONS
@@ -155,8 +221,17 @@ Sarang:
   - Implemented and revised SpawnComponent and SpawnSystem for periodically creating stars with randomized movement.
 
 Zifan:
-  - 
-
+  - Implemented EntityManager (engine/EntityManager.h) and its tests (engine/EngineTest.cpp).
+  - Implemented ECSEngine::ProcessEvents, Run, GetFrameTime and DebugDraw, and the D debug toggle (engine/ECSEngine.h).
+  - Set the CollisionComponent defaults and implemented CollisionLateSystem and CollisionSystem, including star collection, star bouncing, the landing sound, camera shake on hard hits, spikes and the wall-seam fix.
+  - Implemented MovementSystem, GravitySystem (faster falling, fast fall, wall slide) and InputSystem (run, jump, variable jump height, wall jump, dash in the direction last faced).
+  - Implemented LoadMap and the main() setup in platformer/main.cpp: sounds, maps, player, score, camera and the extra star.
+  - Smaller changes in shared or partner files:
+      * engine/Keyboard.h: added "#pragma once".
+      * CameraSystem.h, ScoreSystem.h, SpawnSystem.h, SpriteSystem.h: added the "template" keyword.
+      * WindowManager.cpp: added the missing std::clamp.
+      * CameraSystem.h: the camera reads the player's CameraShake.
+      * SpriteSystem.h: added clear() and moved display() out.
 
 
 6. AI USAGE
@@ -202,4 +277,34 @@ Code and design assistance
 
 ZIFAN
 ================
+
+  - engine/EngineTest.cpp: the four asserts of Test 1 and the functions TestRemoveEntity, TestComponents, TestSlotReuse, TestRemoveEntityClearsComponents and TestIteration. The AI also changed main's signature to "int main()" to remove unused-parameter warnings.
+
+  - Comments only (no logic): doc comments in EntityManager.h; a pass over EntityManager.h, ECSEngine.h, CollisionComponent.h, CollisionLateSystem.h, CollisionSystem.h, MovementSystem.h, GravitySystem.h and InputSystem.h that rewrote the function comments as Doxygen blocks and added line comments.
+
+  - Build fixes after the partner's PR #2: moved the includes GravityComponent.h, MovementComponent.h and RespawnComponent.h above the system headers in platformer/main.cpp, and added the keyword "template" before the dependent calls (HasComponent, GetComponent, AddComponent) in CameraSystem.h, ScoreSystem.h, SpawnSystem.h and SpriteSystem.h.
+
+  - Nov 13 gameplay blocks:
+      * InputSystem.h: moved the existing run code (acceleration, stop, clamps) inside "if (!dashing)" so the clamp does not cut a dash after one frame.
+      * CollisionSystem.h: "bool wasOnGround" (saved before the flags are cleared) and the if after the inner loop that plays "land".
+      * GravitySystem.h: the block after the wall-slide cap that plays "wall" while sliding, only when it is not already playing.
+      * CollisionSystem.h: the shake in the ceiling case and both wall cases 
+
+  - Small fixes the AI named: "ECSEngine::EntityManager" in EngineTest.cpp; "e.GetID()" in ProcessEvents; "static_cast<size_t>(...scancode)" as the bitset position; ".template" before HasComponent/GetComponent inside a class template; "!keepRunning" with "break;" in Run; ": 1 = 0" on the bitfields and "{}" on the two Rects in CollisionComponent.h; "auto& em = engine->GetEntityManager();" and the "GetID"/"IsValid" capitalisation in CollisionLateSystem.
+  - CollisionSystem: the four "no overlap" conditions in plain words; the shape "Rect currentBox{ Point2D(A + B, C + D), E, F }"; the shape "loc.y = A - B - C" for the landing push and the fix from ">=" to "<="; the ceiling and wall pushes by swapping y for x and height for width in my own lines; skipping static entities and resetting the flags each frame; fixes for missing braces and typos.
+  - Frame time and MovementSystem: the idea of measuring frame time in Run and exposing it through EngineView; sf::Clock, restart() returning sf::Time, asSeconds() returning float; "virtual float GetFrameTime() = 0;" and "override"; the line "mFrameTime = mClock.restart().asSeconds();"; why the clock restarts before the loop; "+=" instead of "=".
+  - GravitySystem: that my first line (copied from MovementSystem) changed the location instead of the velocity; that velocity changes by acceleration * frame time; the exact line "movementComponent.velocity.x += gravityComponent.acceleration.x * frameTime;". For the second part (fall faster, Down, wall slide): the design (a multiplier while falling, a second for Down, a cap for the slide).
+  - InputSystem: what the system is for; two clamps for two directions; the minus sign on the jump because screen y points down; "just pressed = keydown now and not lastKeydown"; lastDash as a component field, not a local; "else" for the dash direction; the exact line "inputComponent.lastKeydown = inputComponent.keydown;".
+  - LoadMap: the map format in words; reading the label words into "word"; unordered_map as the letter-to-SpriteID table; char versus string; static_cast<float>; RegisterTexture returning a SpriteID; "sprites[word] = id;"; handling 'S' first with continue; the star rectangle {{640, 320}, 64, 64} read off the spritesheet; the six SpawnComponent members and the values 60, 120 and 1000. When I got stuck the AI showed the star block and the loop in the right order. 
+  - main() setup: the RegisterSound and LoadMap signatures; braces versus parentheses for the components; the character cell size; GravityComponent(Point2D(x, y)) and a gravity value near 1000; the score digit cells (x = 832, y = 832 - 64 * digit) and positions; the camera field values and both exclusion rectangles; the extra star's rectangle and position. The AI also wrote the explanatory comments in main().
+  - Wall-seam fix and straight dash (commit ef55573): the AI found with a scripted test that the player got stuck where two wall tiles meet, because currentBox was not rebuilt after a push. I typed the six lines that rebuild currentBox and the "if (dashing) velocity.y = 0" line.
+
+Reflection
+
+  - The AI's playtests and debug traces found real bugs I could not see (the frame rate, the floor fall-through, the wall-seam sticking).
+  - Its first explanations often did not work for me (collision pushes, frame time, keydown/lastKeydown, the score arrays) and had to be redone with worked examples.
+  - It was wrong several times and corrected itself: that movement should be a fixed amount per frame (the lecture notes say pixels per second), that totalSpawns should be 0, that y = 10 needed no float cast, and that the iterator skips invalid slots. I checked its claims against the headers and the PDF.
+  - Its first attempt at the gameplay fixes rewrote too much at once; I asked it to undo that so I could write the code myself, and it kept that version only as a reference outside the repo.
+  - The tests in EngineTest.cpp are simple and only cover the cases the AI thought of; they do not test failure paths because assert aborts the program.
+
 
