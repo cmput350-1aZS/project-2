@@ -1,5 +1,3 @@
-#pragma once
-
 namespace ECSEngine {
 
 namespace Key {
