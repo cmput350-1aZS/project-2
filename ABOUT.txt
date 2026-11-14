@@ -1,0 +1,205 @@
+CMPUT 350 - Project 2: ECS Engine and Platformer
+================================================
+
+Team members: Sarang Kim, Zifan Li
+
+
+1. OVERVIEW
+-----------
+
+This project implements an Entity Component System (ECS) game engine in C++20 using SFML 3, together with a small platformer game built on top of the engine.
+
+The project is divided into two main parts:
+  - engine/: ECS infrastructure, entities, components, systems, and resource managers.
+  - platformer/: game initialization and the platformer game setup.
+
+The engine uses entities as identifiers, components to store game data, and systems to process entities with the required components. The engine also provides resource managers for sounds, sprites, the rendering window, and entities.
+
+The platformer is designed around a player who can move, jump, wall-jump, and dash through a level while collecting stars. The game uses a camera that follows the player horizontally, a score display, and a spawner that creates moving stars.
+
+
+2. WHAT IS IMPLEMENTED
+----------------------
+
+One entry per major part of the project: what exists, which files, and how it works.
+
+[M1] Sound Manager
+  - Implemented the SoundManager resource manager in engine/SoundManager.h and SoundManager.cpp.
+  - Sounds are registered using a file path and a name, allowing the game to retrieve sounds by name instead of loading them directly wherever they are needed.
+  - The manager owns the sound resources and provides access through GetSound.
+  - This keeps sound loading and storage separate from the game systems that use the sounds.
+
+[M2] Sprite Manager
+  - Implemented the SpriteManager resource manager in engine/SpriteManager.h and SpriteManager.cpp.
+  - RegisterTexture loads a texture and creates a sprite using the requested source rectangle.
+  - Textures are stored in an unordered_map so that sprites can continue to refer to textures owned by the manager.
+  - Sprites are stored in a vector, and SpriteID is used as an index to retrieve a registered sprite.
+  - GetSprite provides access to a sprite using its SpriteID.
+  - This allows game entities to refer to registered sprites without loading and managing textures themselves.
+
+[M3] Window Manager
+  - Implemented the WindowManager resource manager in engine/WindowManager.h and WindowManager.cpp.
+  - The manager owns the SFML render window and provides access to it through GetWindow.
+  - It also manages the relationship between world coordinates and window coordinates.
+  - The camera can be configured through the world center and world scale.
+  - Conversion functions allow systems to transform points and rectangles between world space and screen space.
+  - This keeps camera and coordinate conversion logic out of individual game systems.
+
+[M4] Camera Components and Camera System
+  - Camera-related components are defined in CameraComponent.h, CameraFollowerComponent.h, and CameraShakeComponent.h.
+  - CameraComponent stores the camera position, world-units-per-pixel scale, hard and soft exclusion rectangles, and camera tracking speed.
+  - CameraFollower stores the entity ID of the entity that the camera should follow.
+  - CameraShake stores the remaining shake frames and the offset used to determine the shake magnitude.
+  - CameraSystem finds the camera and its follower, then adjusts the camera's horizontal position based on the follower's screen position.
+  - The camera uses hard and soft follow boundaries. Crossing a hard boundary moves the camera directly, while crossing a soft boundary allows it to track smoothly.
+  - The camera's vertical position remains fixed.
+  - CameraSystem updates WindowManager with the resulting camera position and scale.
+
+[M5] Sprite Component and Sprite System
+  - SpriteComponent is defined in SpriteComponent.h.
+  - It stores the SpriteID, the bounds of the sprite relative to the entity's location, and whether the sprite is drawn in world space or screen space.
+  - SpriteSystem iterates through entities with SpriteComponent and draws their sprites using SpriteManager.
+  - If an entity has a LocationComponent, its location is used as the base position for the sprite.
+  - World-space sprites are converted to window coordinates through WindowManager.
+  - The system uses a local copy of the registered sprite when applying position and scale, so drawing transformations do not modify the sprite stored in SpriteManager.
+  - The window is displayed after the sprites have been drawn.
+
+[M6] Score Component and Score System
+  - ScoreComponent is defined in ScoreComponent.h.
+  - It stores the current score, the entity IDs used to display the score, and the SpriteIDs corresponding to the digits 0 through 9.
+  - ScoreSystem converts the score into three digits and updates the texture IDs of the corresponding digit entities.
+  - The score display uses numeric sprites rather than text rendering.
+
+[M7] Spawn Component and Spawn System
+  - SpawnComponent is defined in SpawnComponent.h.
+  - It stores the entity associated with the spawner, the type of entity to create, the sprite texture ID, the time until the next spawn, the interval between spawns, and the total number of spawning events.
+  - SpawnSystem finds entities with SpawnComponent and counts down their spawn timers.
+  - When a spawn is due, it creates a new entity at the spawner's location.
+  - The spawned entity receives location, sprite, movement, and collision components.
+  - Its movement direction and speed are randomized.
+  - Spawner IDs are collected before creating new entities so that creating entities does not invalidate the entity iteration.
+
+[M8] ECS Engine and System Integration
+  - The engine provides an EngineView interface through which systems access the resource managers and EntityManager.
+  - Systems are registered through SystemManager and run consecutively in their registration order.
+  - The engine's component pack includes the components required by the platformer, including location, movement, collision, sprite, spawn, camera, camera follower, input, gravity, camera shake, score, and respawn components.
+  - The platformer main file registers the systems used by the game, including input, gravity, movement, collision, score, camera, sprite, and spawn systems.
+
+
+3. DESIGN DECISIONS AND API CHANGES
+-----------------------------------
+
+[M1] Resource managers
+  - SoundManager, SpriteManager, and WindowManager keep resource ownership separate from the systems that use those resources.
+  - Systems access managers through EngineView rather than directly accessing the engine's private manager variables.
+  - SoundManager uses names to retrieve registered sounds.
+  - SpriteManager uses SpriteID values to retrieve registered sprites. Textures are stored separately from sprites so that sprites can refer to manager-owned textures.
+  - WindowManager centralizes coordinate conversion and camera configuration so that systems do not need to implement their own world-to-screen transformations.
+
+[M2] Sprite drawing
+  - SpriteComponent stores the sprite's bounds relative to the entity's base location.
+  - SpriteSystem adds the relative sprite offset to the entity's location before drawing.
+  - World-space and screen-space sprites are handled differently because only world-space sprites need to be transformed by the camera.
+  - A copy of the registered sprite is used for drawing so that position and scale changes do not persist in the manager's stored sprite.
+
+[M3] Camera behavior
+  - The camera follows the player horizontally while keeping its vertical position fixed.
+  - The hard and soft exclusion rectangles define the screen-space regions used to determine when the camera should move.
+  - Hard following prevents the player from reaching the outer screen boundaries, while soft following gradually recenters the player.
+  - Camera shake is handled through CameraShake data so that collision handling can communicate shake information to CameraSystem without directly controlling the window.
+
+[M4] Score display
+  - The score is represented by three digit entities.
+  - Each digit entity uses one of the ten registered numeric sprites.
+  - ScoreSystem updates the sprite texture IDs rather than creating new text objects every frame.
+
+[M5] Entity spawning
+  - SpawnSystem collects the IDs of active spawners before creating entities. This avoids modifying the entity collection while iterating through it.
+  - Spawned stars receive their own components and randomized movement.
+  - Collision resolution and bouncing behavior are handled separately by the collision systems.
+
+[M6] Resource lifetime and ownership
+  - Resource managers own the resources they register.
+  - A reference returned by GetSound or GetSprite does not transfer ownership to the caller.
+  - GetWindow returns a shared pointer to the SFML window, allowing systems to access the window while the engine and WindowManager retain ownership.
+  - EntityManager and the other managers are owned by the engine. Systems should access them through EngineView and should not retain references beyond the lifetime guaranteed by the manager.
+  - References to sprites stored in SpriteManager should not be retained across later sprite registrations unless their validity is guaranteed by the implementation, since the sprites are stored in a vector.
+
+
+4. IMPLEMENTATION NOTES AND REMAINING WORK
+------------------------------------------
+
+  - The platformer entry point is platformer/main.cpp.
+  - LoadMap is declared there, but its implementation and the map-loading setup still need to be completed.
+  - The main function contains setup sections for loading sounds and maps, placing the player, configuring the score component, and setting up the camera.
+  - The engine's main loop and event processing must be completed so that the registered systems run during gameplay.
+  - CollisionSystem and CollisionLateSystem still need their collision behavior implemented and integrated with the other systems.
+  - The collision implementation must support collecting stars, updating the score, bouncing spawned stars off static obstacles, and triggering camera shake.
+  - The game should be tested with the provided map layout, including the additional star outside the walls needed to test traversal.
+  - The final gameplay should be checked for wall jumping, dashing, variable jump height, wall sliding, faster falling, star collection, and score updates.
+
+These notes describe the implementation state while the project is being developed. They should be updated after the remaining systems and gameplay have been completed and tested.
+
+
+5. TEAM CONTRIBUTIONS
+---------------------
+
+Sarang:
+  - Implemented SoundManager, including sound registration and retrieval.
+  - Implemented SpriteManager, including texture registration, sprite creation, and sprite retrieval through SpriteID.
+  - Implemented WindowManager, including window ownership, camera configuration, and world/window coordinate conversion.
+  - Worked on CameraComponent, CameraFollower, and CameraShake.
+  - Implemented and revised CameraSystem for horizontal camera following and camera shake.
+  - Implemented and revised SpriteComponent and SpriteSystem for drawing world-space and screen-space sprites.
+  - Implemented and revised ScoreComponent and ScoreSystem for displaying the score using numeric sprites.
+  - Implemented and revised SpawnComponent and SpawnSystem for periodically creating stars with randomized movement.
+
+Zifan:
+  - 
+
+
+
+6. AI USAGE
+-----------
+
+SARANG
+======
+
+Code and design assistance
+
+  AI assistance was used during development to explain the ECS architecture, review existing code, identify implementation problems, and help draft and revise parts of the resource managers and game systems.
+
+  The prompts included requests to:
+    - Help implement the resource managers for sound, sprites, and the window.
+    - Explain how the engine, EngineView, EntityManager, and SystemManager interfaces should be used by game systems.
+    - Implement the camera, sprite, score, and spawn systems using the existing component definitions.
+    - Review and fix the existing system implementations, including compile errors, missing includes, component access, entity validity checks, and camera behavior.
+    - Explain how the systems should interact with the components and resource managers.
+
+  Files and areas receiving AI assistance:
+    - engine/SoundManager.h and engine/SoundManager.cpp
+      Resource registration and retrieval design and implementation assistance.
+    - engine/SpriteManager.h and engine/SpriteManager.cpp
+      Texture storage, sprite registration, and SpriteID retrieval design and implementation assistance.
+    - engine/WindowManager.h and engine/WindowManager.cpp
+      Window ownership, coordinate conversion, and camera API implementation assistance.
+    - engine/SpriteSystem.h
+      Review and revision of sprite drawing, coordinate conversion, and scaling.
+    - engine/ScoreSystem.h
+      Review and revision of score digit calculation and sprite updates.
+    - engine/CameraSystem.h
+      Review and revision of camera following, exclusion boundaries, and camera shake.
+    - engine/SpawnSystem.h
+      Review and revision of entity creation, randomized movement, component setup, and safe entity iteration.
+
+  Reflection:
+    - AI assistance was useful for understanding how the systems should use the existing engine interfaces and resource managers.
+    - Reviewing the existing code helped identify issues such as duplicate functionality declarations, missing includes, unsafe entity iteration, and assumptions about component data.
+    - The suggested implementations still need to be checked against the final project interfaces and tested in the complete game.
+    - The team is responsible for understanding all submitted code and verifying that the final implementation behaves as intended.
+
+
+
+ZIFAN
+================
+
