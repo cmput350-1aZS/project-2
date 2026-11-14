@@ -5,6 +5,7 @@
 #include "CameraShakeComponent.h"
 #include "InputComponent.h"
 #include "ScoreComponent.h"
+#include <MovementComponent.h>
 
 namespace ECSEngine {
 

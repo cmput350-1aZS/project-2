@@ -4,22 +4,21 @@
 #include <unordered_map>
 
 // These structs must be declared before the system headers below, which name them directly
-#include "GravityComponent.h"
-#include "MovementComponent.h"
-#include "RespawnComponent.h"
-
 #include "CameraSystem.h"
 #include "CollisionComponent.h"
 #include "CollisionLateSystem.h"
 #include "CollisionSystem.h"
 #include "ECSEngine.h"
 #include "EntityManager.h"
+#include "GravityComponent.h"
 #include "GravitySystem.h"
 #include "InputComponent.h"
 #include "InputSystem.h"
 #include "LocationComponent.h"
 #include "MathUtil.h"
+#include "MovementComponent.h"
 #include "MovementSystem.h"
+#include "RespawnComponent.h"
 #include "ScoreComponent.h"
 #include "ScoreSystem.h"
 #include "SpawnComponent.h"
@@ -138,7 +137,7 @@ int main(int argc, char* argv[]) {
     Engine engine(1024, 768, "Test Engine");
 
     // Load sounds
-    // Each sound is registered once under a short name. Systems play it later with GetSound(name). 
+    // Each sound is registered once under a short name. Systems play it later with GetSound(name).
     auto& soundManager = engine.GetSoundManager();
     soundManager.RegisterSound(gResourcePath + "sfx_jump.ogg", "jump");
     soundManager.RegisterSound(gResourcePath + "footstep_grass_003.ogg", "land");
@@ -169,7 +168,7 @@ int main(int argc, char* argv[]) {
     em.AddComponent(player,
                     ECSEngine::SpriteComponent(charId, ECSEngine::Rect{{0, 0}, 64, 64}, true));
 
-    // The collision box is an offset from the location: here the whole 64 x 64 square. 
+    // The collision box is an offset from the location: here the whole 64 x 64 square.
     ECSEngine::CollisionComponent collision;
     collision.collisionBox = {{0, 0}, 64, 64};
     em.AddComponent(player, collision);
@@ -231,15 +230,14 @@ int main(int argc, char* argv[]) {
     em.AddComponent(cameraEntity, cameraComponent);
 
     // Place extra star
-    // One star placed by hand on top of the left wall (column 10, row 4 of world.map, so its
-    // top edge is y = 256 and a 64 px star sits at y = 192). The player can only reach it by
-    // wall jumping, which tests the wall jump. The picture is the star cell of the tiles sheet,
-    // the same one the spawner uses.
+    // One star placed by hand past the second spike wall (between columns 50 and 53 of
+    // world.map, standing on the floor at y = 704, so a 64 px star sits at y = 640). The only
+    // way in is over column 50, so collecting it tests getting over the spike walls.
     ECSEngine::SpriteID starId = texture.RegisterTexture(
         gResourcePath + "spritesheet-tiles-default.png", ECSEngine::Rect{{640, 320}, 64, 64});
 
     ECSEngine::EntityID starEntity = em.CreateEntity("star");
-    em.AddComponent(starEntity, ECSEngine::LocationComponent{{640, 192}});
+    em.AddComponent(starEntity, ECSEngine::LocationComponent{{3296, 640}});
     em.AddComponent(starEntity,
                     ECSEngine::SpriteComponent(starId, ECSEngine::Rect{{0, 0}, 64, 64}, true));
 
