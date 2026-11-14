@@ -1,11 +1,13 @@
 #pragma once
 
+#include <MovementComponent.h>
+
 #include <cmath>
 
 #include "CameraShakeComponent.h"
 #include "InputComponent.h"
+#include "RespawnComponent.h"
 #include "ScoreComponent.h"
-#include <MovementComponent.h>
 
 namespace ECSEngine {
 
@@ -139,6 +141,17 @@ public:
                                         }
                                         engine->GetSoundManager().GetSound("star").play();
                                         continue;
+                                    }
+
+                                    if (em.template HasComponent<InputComponent>(id) &&
+                                        otherCollisionComponent.doesDamage &&
+                                        em.template HasComponent<RespawnComponent>(id)) {
+                                        locationComponent.loc =
+                                            em.template GetComponent<RespawnComponent>(id).loc;
+                                        auto& movementComponent =
+                                            em.template GetComponent<MovementComponent>(id);
+                                        movementComponent.velocity = Point2D(0.0f, 0.0f);
+                                        break;
                                     }
 
                                     if (collisionComponent.previousCollisionBox.topLeft.y +

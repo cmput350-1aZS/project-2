@@ -119,6 +119,7 @@ void LoadMap(Engine& engine, const std::string& path, const std::string& file) {
             if (number == 2) {
                 ECSEngine::CollisionComponent collision;
                 collision.staticEntity = 1;
+                collision.doesDamage = (letter == 'x');  // 'x' is the spike block in world.map
                 collision.collisionBox = boxes[std::string(1, letter)];
                 em.AddComponent(tile, collision);
             }
