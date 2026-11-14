@@ -109,7 +109,7 @@ private:
 
     // For debugging - pause and step the engine
     bool running, step;
-    int debug;
+    int debug = 0;
 };
 
 template <typename... Components>
@@ -122,7 +122,6 @@ ECSEngine<Components...>::~ECSEngine() {}
 
 template <typename... Components>
 void ECSEngine<Components...>::Run() {
-
     // Set fps to 60
     mWindowManager.GetWindow()->setFramerateLimit(60);
 
@@ -137,6 +136,11 @@ void ECSEngine<Components...>::Run() {
         if (!keepRunning) {
             break;
         }
+
+        if (debug) {
+            DebugDraw();
+        }
+        mWindowManager.GetWindow()->display();
     }
 }
 
@@ -155,6 +159,9 @@ bool ECSEngine<Components...>::ProcessEvents() {
         auto pressed = event->getIf<sf::Event::KeyPressed>();
 
         if (pressed) {
+            if (pressed->scancode == sf::Keyboard::Scan::D) {
+                debug = !debug;
+            }
             // Every entity that listens to the keyboard gets the key marked as down
             for (Entity e : mEntityManager) {
                 if (mEntityManager.IsValid(e.GetID())) {
@@ -186,6 +193,26 @@ bool ECSEngine<Components...>::ProcessEvents() {
 }
 
 template <typename... Components>
-void ECSEngine<Components...>::DebugDraw() {}
+void ECSEngine<Components...>::DebugDraw() {
+    for (Entity e : mEntityManager) {
+        if (!mEntityManager.IsValid(e.GetID()) ||
+            !mEntityManager.template HasComponent<CollisionComponent>(e.GetID()) ||
+            !mEntityManager.template HasComponent<LocationComponent>(e.GetID())) {
+            continue;
+        }
+
+        auto& collision = mEntityManager.template GetComponent<CollisionComponent>(e.GetID());
+        auto& location = mEntityManager.template GetComponent<LocationComponent>(e.GetID());
+        Rect box{Point2D(collision.collisionBox.topLeft.x + location.loc.x,
+                         collision.collisionBox.topLeft.y + location.loc.y),
+                 collision.collisionBox.width, collision.collisionBox.height};
+
+        if (collision.staticEntity) {
+            mWindowManager.DebugFrameRect(box, 255, 0, 0);
+        } else {
+            mWindowManager.DebugFrameRect(box, 0, 255, 0);
+        }
+    }
+}
 
 }  // namespace ECSEngine

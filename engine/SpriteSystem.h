@@ -40,6 +40,8 @@ public:
             return kContinue;
         }
 
+        window->clear();
+
         for (const Entity& entity : entities) {
             EntityID id = entity.GetID();
 
@@ -100,8 +102,6 @@ public:
 
             window->draw(sprite);
         }
-
-        window->display();
 
         return kContinue;
     }
