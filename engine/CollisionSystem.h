@@ -2,8 +2,15 @@
 
 #include "InputComponent.h"
 #include "ScoreComponent.h"
+#include <cmath>
+#include "CameraShakeComponent.h"
 
 namespace ECSEngine {
+
+const float kBounceKeep = 0.7f;  // Share of speed a star keeps when it bounces
+const float kShakeMinSpeed = 400.0f;  // Slowest hit (pixels per second) that shakes the screen
+const float kShakeScale = 0.01f;      // Shake size in pixels per pixel-per-second of hit speed
+const int kShakeFrames = 8;           // Frames a shake lasts
 
 /**
  * @brief Tests whether two boxes share area.
@@ -79,7 +86,6 @@ public:
                         collisionComponent.collisionBox.height,
                     };
 
-  
                     bool wasOnGround = collisionComponent.onGround;
 
                     // The contact flags describe this frame only, so clear them before testing
@@ -149,7 +155,14 @@ public:
                                         if (em.template HasComponent<MovementComponent>(id)) {
                                             auto& movementComponent =
                                                 em.template GetComponent<MovementComponent>(id);
-                                            movementComponent.velocity.y = 0;
+
+                                            if (em.template HasComponent<InputComponent>(id)) {
+                                                movementComponent.velocity.y = 0;
+                                            } else {
+                                                movementComponent.velocity.y *=
+                                                    -kBounceKeep;  // Not the player, so only stars
+                                                                   // bounce
+                                            }
                                         }
                                     } else if (collisionComponent.previousCollisionBox.topLeft.y >=
                                                otherBox.topLeft.y + otherBox.height) {
@@ -163,7 +176,14 @@ public:
                                         if (em.template HasComponent<MovementComponent>(id)) {
                                             auto& movementComponent =
                                                 em.template GetComponent<MovementComponent>(id);
-                                            movementComponent.velocity.y = 0;
+
+                                            if (em.template HasComponent<InputComponent>(id)) {
+                                                movementComponent.velocity.y = 0;
+                                            } else {
+                                                movementComponent.velocity.y *=
+                                                    -kBounceKeep;  // Not the player, so only stars
+                                                                   // bounce
+                                            }
                                         }
 
                                     } else if (collisionComponent.previousCollisionBox.topLeft.x +
@@ -181,7 +201,13 @@ public:
                                         if (em.template HasComponent<MovementComponent>(id)) {
                                             auto& movementComponent =
                                                 em.template GetComponent<MovementComponent>(id);
-                                            movementComponent.velocity.x = 0;
+                                            if (em.template HasComponent<InputComponent>(id)) {
+                                                movementComponent.velocity.x = 0;
+                                            } else {
+                                                movementComponent.velocity.x *=
+                                                    -kBounceKeep;  // Not the player, so only stars
+                                                                   // bounce
+                                            }
                                         }
                                     } else if (collisionComponent.previousCollisionBox.topLeft.x >=
                                                otherBox.topLeft.x + otherBox.width) {
@@ -194,7 +220,13 @@ public:
                                         if (em.template HasComponent<MovementComponent>(id)) {
                                             auto& movementComponent =
                                                 em.template GetComponent<MovementComponent>(id);
-                                            movementComponent.velocity.x = 0;
+                                            if (em.template HasComponent<InputComponent>(id)) {
+                                                movementComponent.velocity.x = 0;
+                                            } else {
+                                                movementComponent.velocity.x *=
+                                                    -kBounceKeep;  // Not the player, so only stars
+                                                                   // bounce
+                                            }
                                         }
                                     }
                                 }
@@ -203,7 +235,7 @@ public:
                     }
 
                     // The player touches the ground this frame but did not last frame: it
-                    // just landed 
+                    // just landed
                     if (em.template HasComponent<InputComponent>(id) &&
                         collisionComponent.onGround && !wasOnGround) {
                         engine->GetSoundManager().GetSound("land").play();
