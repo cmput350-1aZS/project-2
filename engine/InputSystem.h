@@ -11,6 +11,10 @@ const float kJumpVelocity = 25;          // Upward speed set by a jump
 const float kGroundRunAcceleration = 5;  // Speed gained per frame by a held arrow key on the ground
 const float kAirRunAcceleration = 4;     // Same, in the air
 const float kDashInterval = 25;          // Frames that must pass between two dashes
+const float kJumpCutVelocity = 0.0f;     // Fastest upward speed allowed once Z is released
+const float kWallJumpVelocity = 25.0f;   // Upward speed set by a wall jump
+const float kWallJumpPush = 12.0f;       // Sideways speed away from the wall set by a wall jump
+const float kDashDuration = 10;
 
 template <typename... Components>
 class InputSystem : public System<Components...> {
@@ -29,6 +33,12 @@ public:
      *    kAirRunAcceleration in the air), then velocity.x is clamped to +-kMaxRunVelocity.
      *  - Z, on the frame it is first pressed and while onGround, sets velocity.y to
      *    -kJumpVelocity (screen y points down, so up is negative).
+     *  - Z, on the frame it is first pressed, in the air and falling (velocity.y > 0), with a
+     *    wall on one side (onLeftWall / onRightWall) and the key for that side held, is a wall
+     *    jump: velocity.y is set to -kWallJumpVelocity and velocity.x to kWallJumpPush away from
+     *    the wall. The wall flags are last frame's, because CollisionSystem runs later.
+     *  - While Z is not held, upward speed is capped: velocity.y cannot go below
+     *    -kJumpCutVelocity, so releasing Z early cuts the jump short.
      *  - C, on the frame it is first pressed and at least kDashInterval frames after the last
      *    dash, sets velocity.x to -kDashVelocity if Left is held, otherwise kDashVelocity, and
      *    resets lastDash to 0. lastDash counts frames and is incremented once per frame.
@@ -85,6 +95,33 @@ public:
                     if (inputComponent.keydown[Key::Z] && !inputComponent.lastKeydown[Key::Z] &&
                         collisionComponent.onGround) {
                         movementComponent.velocity.y = -kJumpVelocity;
+                    }
+
+                    // Wall jump off a wall on the left. Needs a fresh Z press, in the air,
+                    // falling, touching the left wall and holding Left (pushing into it).
+                    // Sets both speeds: up (negative y) and right, away from the wall
+                    if (inputComponent.keydown[Key::Z] && !inputComponent.lastKeydown[Key::Z] &&
+                        !collisionComponent.onGround && movementComponent.velocity.y > 0 &&
+                        collisionComponent.onLeftWall && inputComponent.keydown[Key::Left]) {
+                        movementComponent.velocity.y = -kWallJumpVelocity;
+                        movementComponent.velocity.x = kWallJumpPush;
+                    }
+
+                    // The same wall jump off a wall on the right. Only x flips: the push goes
+                    // left. The jump is still up, so y keeps its minus sign
+                    if (inputComponent.keydown[Key::Z] && !inputComponent.lastKeydown[Key::Z] &&
+                        !collisionComponent.onGround && movementComponent.velocity.y > 0 &&
+                        collisionComponent.onRightWall && inputComponent.keydown[Key::Right]) {
+                        movementComponent.velocity.y = -kWallJumpVelocity;
+                        movementComponent.velocity.x = -kWallJumpPush;
+                    }
+
+                    // Variable jump height: while Z is not held, upward speed is capped at
+                    // kJumpCutVelocity, so letting go early cuts the jump short. Screen y points
+                    // down, so upward speed is negative
+                    if (!inputComponent.keydown[Key::Z] &&
+                        movementComponent.velocity.y < -kJumpCutVelocity) {
+                        movementComponent.velocity.y = -kJumpCutVelocity;
                     }
 
                     // lastDash counts frames since the last dash. It lives in the component
