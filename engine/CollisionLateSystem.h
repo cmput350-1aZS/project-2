@@ -1,14 +1,5 @@
 #pragma once
 
-// AI disclosure: Claude Code, used as a tutor. I typed the body of Run. The AI gave me:
-// "auto& em = engine->GetEntityManager();", the method names GetID and IsValid (capital
-// ID / I), the shape of em.template GetComponent<Type>(id), the left side
-// "collisionComponent.previousCollisionBox.topLeft.x", and a plain-word list of the four
-// Rect values. It also pointed out that my first y line read previousCollisionBox
-// instead of collisionBox. Prompts: "im kinda stukc", "IDKKK",
-// "i dont get it, i dont see whats wrong".
-// Quality: checked by reading only. [CONFIRM: not compiled yet]
-
 namespace ECSEngine {
 
 template <typename... Components>

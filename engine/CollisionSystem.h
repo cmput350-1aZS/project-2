@@ -1,13 +1,14 @@
 #pragma once
 
+#include <cmath>
+
+#include "CameraShakeComponent.h"
 #include "InputComponent.h"
 #include "ScoreComponent.h"
-#include <cmath>
-#include "CameraShakeComponent.h"
 
 namespace ECSEngine {
 
-const float kBounceKeep = 0.7f;  // Share of speed a star keeps when it bounces
+const float kBounceKeep = 0.7f;       // Share of speed a star keeps when it bounces
 const float kShakeMinSpeed = 400.0f;  // Slowest hit (pixels per second) that shakes the screen
 const float kShakeScale = 0.01f;      // Shake size in pixels per pixel-per-second of hit speed
 const int kShakeFrames = 8;           // Frames a shake lasts
@@ -157,6 +158,17 @@ public:
                                                 em.template GetComponent<MovementComponent>(id);
 
                                             if (em.template HasComponent<InputComponent>(id)) {
+                                                float hitSpeed =
+                                                    std::abs(movementComponent.velocity.y);
+
+                                                if (hitSpeed >= kShakeMinSpeed &&
+                                                    em.template HasComponent<CameraShake>(id)) {
+                                                    auto& shake =
+                                                        em.template GetComponent <CameraShake>(id);
+                                                    shake.frameLimit = kShakeFrames;
+                                                    shake.offset =
+                                                        Point2D(0.0f, hitSpeed * kShakeScale);
+                                                }
                                                 movementComponent.velocity.y = 0;
                                             } else {
                                                 movementComponent.velocity.y *=
@@ -178,6 +190,20 @@ public:
                                                 em.template GetComponent<MovementComponent>(id);
 
                                             if (em.template HasComponent<InputComponent>(id)) {
+                                                // Hitting a ceiling fast shakes the screen up and
+                                                // down. abs() turns the upward (negative) speed
+                                                // into a size
+                                                float hitSpeed =
+                                                    std::abs(movementComponent.velocity.y);
+
+                                                if (hitSpeed >= kShakeMinSpeed &&
+                                                    em.template HasComponent<CameraShake>(id)) {
+                                                    auto& shake =
+                                                        em.template GetComponent<CameraShake>(id);
+                                                    shake.frameLimit = kShakeFrames;
+                                                    shake.offset =
+                                                        Point2D(0.0f, hitSpeed * kShakeScale);
+                                                }
                                                 movementComponent.velocity.y = 0;
                                             } else {
                                                 movementComponent.velocity.y *=
@@ -202,6 +228,17 @@ public:
                                             auto& movementComponent =
                                                 em.template GetComponent<MovementComponent>(id);
                                             if (em.template HasComponent<InputComponent>(id)) {
+                                                float hitSpeed =
+                                                    std::abs(movementComponent.velocity.x);
+
+                                                if (hitSpeed >= kShakeMinSpeed &&
+                                                    em.template HasComponent<CameraShake>(id)) {
+                                                    auto& shake =
+                                                        em.template GetComponent<CameraShake>(id);
+                                                    shake.frameLimit = kShakeFrames;
+                                                    shake.offset =
+                                                        Point2D(hitSpeed * kShakeScale, 0.0f);
+                                                }
                                                 movementComponent.velocity.x = 0;
                                             } else {
                                                 movementComponent.velocity.x *=
@@ -221,6 +258,17 @@ public:
                                             auto& movementComponent =
                                                 em.template GetComponent<MovementComponent>(id);
                                             if (em.template HasComponent<InputComponent>(id)) {
+                                                float hitSpeed =
+                                                    std::abs(movementComponent.velocity.x);
+
+                                                if (hitSpeed >= kShakeMinSpeed &&
+                                                    em.template HasComponent<CameraShake>(id)) {
+                                                    auto& shake =
+                                                        em.template GetComponent<CameraShake>(id);
+                                                    shake.frameLimit = kShakeFrames;
+                                                    shake.offset =
+                                                        Point2D(hitSpeed * kShakeScale, 0.0f);
+                                                }
                                                 movementComponent.velocity.x = 0;
                                             } else {
                                                 movementComponent.velocity.x *=

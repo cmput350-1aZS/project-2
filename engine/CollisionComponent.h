@@ -1,14 +1,5 @@
 #pragma once
 
-// AI disclosure: Claude Code, used as a tutor. I typed the changes myself. The AI
-// explained that ": 1" is a bit width, not a value, and named the syntax ": 1 = 0"
-// for a default value on a bitfield (C++20) and "{}" for the two Rect members.
-// Prompt that started this: "Im confused, so moiving on to GameComponents, im trying
-// to work on CollisionComponent. But which lecture notes..."
-// Quality: the defaults only fix uninitialized memory. The AI's claim that "most
-// entities move" was wrong (it is not in the spec); 0 is a safe default, not a
-// prediction. [CONFIRM: not compiled yet]
-
 #include <bitset>
 #include <unordered_map>
 #include <cstdint>
