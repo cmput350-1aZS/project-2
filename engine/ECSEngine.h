@@ -151,13 +151,12 @@ bool ECSEngine<Components...>::ProcessEvents() {
     // pollEvent() hands back the waiting events one at a time until none are left
     while (auto event = window->pollEvent()) {
         // The window's close button was clicked: tell Run() to stop
-        if (event->is<sf::Event::Closed>()) {
+        if (event->template is<sf::Event::Closed>()) {
             return false;
         }
 
         // getIf returns a pointer if the event is a key press, otherwise nothing
-        auto pressed = event->getIf<sf::Event::KeyPressed>();
-
+        auto pressed = event->template getIf<sf::Event::KeyPressed>();
         if (pressed) {
             if (pressed->scancode == sf::Keyboard::Scan::D) {
                 debug = !debug;
@@ -174,8 +173,7 @@ bool ECSEngine<Components...>::ProcessEvents() {
             }
         }
 
-        auto released = event->getIf<sf::Event::KeyReleased>();
-
+        auto released = event->template getIf<sf::Event::KeyReleased>();
         // Same loop for a key release, clearing the key's bit instead of setting it
         if (released) {
             for (Entity e : mEntityManager) {
